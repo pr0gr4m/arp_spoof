@@ -415,12 +415,11 @@ void *thread_icmp_sniffing(void *arg)
     struct thread_arg_relay *t_arg = (struct thread_arg_relay *)arg;
     struct arp_header *ahdr_s = t_arg->arphdr_s;
     struct arp_header *ahdr_t = t_arg->arphdr_t;
-    struct ip iphdr_s, iphdr_t;
+    struct ip iphdr_s;
     u_char buf[BUFSIZ];
 
     while (TRUE)
     {
-RECV_SENDER:
         // receive icmp
         memset(buf, 0, BUFSIZ);
         if (recv_icmp_packet(t_arg->p_arg, buf, &iphdr_s))
@@ -433,35 +432,12 @@ RECV_SENDER:
         if (memcmp(ahdr_s->spa, &(iphdr_s.ip_src), sizeof(struct in_addr)))
         {
             continue;
-            goto RECV_SENDER;
         }
 
         pr_out("send icmp relay packet");
         // send icmp relay packet
         if (send_icmp_packet(t_arg->p_arg, ahdr_t, buf,
                              ETH_HEADER_LEN + ntohs(iphdr_s.ip_len)))
-        {
-            pr_err("Fail: send icmp packet");
-            break;
-        }
-
-RECV_TARGET:
-        // recv icmp relay packet's reply
-        memset(buf, 0, BUFSIZ);
-        if (recv_icmp_packet(t_arg->p_arg, buf, &iphdr_t))
-        {
-            pr_err("Fail: recv icmp packet");
-            break;
-        }
-
-        if (memcmp(ahdr_t->spa, &(iphdr_t.ip_src), sizeof(struct in_addr)))
-        {
-            goto RECV_TARGET;
-        }
-
-        pr_out("send icmp reply packet");
-        if (send_icmp_packet(t_arg->p_arg, ahdr_s, buf,
-                             ETH_HEADER_LEN + ntohs(iphdr_t.ip_len)))
         {
             pr_err("Fail: send icmp packet");
             break;
