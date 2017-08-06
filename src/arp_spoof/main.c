@@ -3,12 +3,20 @@
 #include "use_socket.h"
 #include "build.h"
 
+static void print_ether_addr(u_int8_t addr[])
+{
+    for (int i = 0; i < 6; i++)
+    {
+        printf("%02x%c", addr[i], i == 5 ? '\n' : ':');
+    }
+}
+
 int main(int argc, char *argv[])
 {
     pcap_arg arg;
-    struct arp_header ahdr;
+    struct arp_header ahdr_s, ahdr_t;
     struct thread_arg_arp t_arg_arp = {
-        &arg, &ahdr, argv[3], 0, thread_arp_poison
+        &arg, &ahdr_s, argv[3], 0, thread_arp_poison
     };
 
     if (argc < 4)
@@ -34,16 +42,32 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    // send arp request
-    if (send_arp_request(&arg, argv[2]))
+    // send arp request to sender
+    if (send_arp_request(&arg, argv[2], SENDER))
     {
         exit(EXIT_FAILURE);
     }
 
-    if (recv_arp_packet(&arg, &ahdr))
+    // recv sender's information
+    if (recv_arp_packet(&arg, &ahdr_s, SENDER))
     {
         exit(EXIT_FAILURE);
     }
+
+    // send arp request to target
+    if (send_arp_request(&arg, argv[3], TARGET))
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    // recv target's information
+    if (recv_arp_packet(&arg, &ahdr_t, TARGET))
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    print_ether_addr(ahdr_s.sha);
+    print_ether_addr(ahdr_t.sha);
 
     if (pthread_create(&t_arg_arp.tid, NULL, t_arg_arp.func, (void *)&t_arg_arp))
     {

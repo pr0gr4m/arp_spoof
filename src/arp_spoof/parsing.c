@@ -5,8 +5,7 @@
  * Last modified 2017/07/30
  * Written by pr0gr4m
  *
- * if ethernet type is arp, return TRUE
- * or return FALSE
+ * return ETHERTYPE
  */
 int parse_ethernet(const u_char *frame)
 {
@@ -14,14 +13,7 @@ int parse_ethernet(const u_char *frame)
 
     ethdr = (struct ether_header *)frame;
 
-    if (ntohs(ethdr->ether_type) == ETHERTYPE_ARP)
-    {
-        return TRUE;
-    }
-    else
-    {
-        return FALSE;
-    }
+    return ntohs(ethdr->ether_type);
 }
 
 /*
@@ -29,11 +21,25 @@ int parse_ethernet(const u_char *frame)
  * Last Modified 2017/07/30
  * Written by pr0gr4m
  *
- * store arp header to packet
+ * store arp header by packet
  */
 int parse_arp(const u_char *packet, struct arp_header *ahdr)
 {
     memcpy(ahdr, packet, ARP_HEADER_LEN);
 
     return TRUE;
+}
+
+/*
+ * Prototype : int parse_ip(const u_char *packet, struct ip *iphdr)
+ * Last Modified 2017/08/06
+ * Written by pr0gr4m
+ *
+ * store ip header by packet
+ * return protocol
+ */
+int parse_ip(const u_char *packet, struct ip *iphdr)
+{
+    memcpy(iphdr, packet, iphdr->ip_hl * 4);
+    return iphdr->ip_p;
 }

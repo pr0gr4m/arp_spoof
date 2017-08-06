@@ -31,6 +31,7 @@ typedef struct _pcap_arg
     u_char local_mac[HWADDR_LEN];
     struct in_addr local_ip;
     struct in_addr sender_ip;
+    struct in_addr target_ip;
 } pcap_arg;
 
 typedef struct thread_arg_arp
