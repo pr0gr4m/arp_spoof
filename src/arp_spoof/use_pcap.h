@@ -25,10 +25,12 @@ int send_arp_poison(pcap_arg *arg, struct arp_header *ahdr, char *addr_t);
 int send_arp_packet(pcap_arg *arg, struct ether_header *ehdr, struct arp_header *ahdr);
 // recv arp packet;
 int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr, int flag);
+// send icmp packet
+int send_icmp_packet(pcap_arg *arg, struct arp_header *ahdr, u_char buf[], size_t len);
 // arp poisoning thread
 void *thread_arp_poison(void *);
-// recv icmp packet;
-int recv_icmp_packet(pcap_arg *arg, u_char buf[], struct arp_header *ahdr, struct ip *iphdr);
+// recv icmp packet
+int recv_icmp_packet(pcap_arg *arg, u_char buf[], struct ip *iphdr);
 // icmp sniffing thread
 void *thread_icmp_sniffing(void *);
 
