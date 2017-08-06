@@ -31,15 +31,16 @@ int parse_arp(const u_char *packet, struct arp_header *ahdr)
 }
 
 /*
- * Prototype : int parse_ip(const u_char *packet, struct ip *iphdr)
+ * Prototype : u_int8_t parse_ip(const u_char *packet, struct ip *iphdr)
  * Last Modified 2017/08/06
  * Written by pr0gr4m
  *
  * store ip header by packet
  * return protocol
  */
-int parse_ip(const u_char *packet, struct ip *iphdr)
+u_int8_t parse_ip(const u_char *packet, struct ip *iphdr)
 {
-    memcpy(iphdr, packet, iphdr->ip_hl * 4);
+    struct ip *tmp = packet;
+    memcpy(iphdr, packet, tmp->ip_hl * 4);
     return iphdr->ip_p;
 }

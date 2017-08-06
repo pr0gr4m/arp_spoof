@@ -2,6 +2,7 @@
 #define USE_PCAP_H
 
 #define RECV_ITER_N 10
+#define RECV_TO_MAX 100
 
 #define SENDER  0x1
 #define TARGET  0x2
@@ -27,7 +28,7 @@ int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr, int flag);
 // arp poisoning thread
 void *thread_arp_poison(void *);
 // recv icmp packet;
-int recv_icmp_packet(pcap_arg *arg);
+int recv_icmp_packet(pcap_arg *arg, u_char buf[], struct arp_header *ahdr, struct ip *iphdr);
 // icmp sniffing thread
 void *thread_icmp_sniffing(void *);
 

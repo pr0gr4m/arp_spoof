@@ -3,20 +3,15 @@
 #include "use_socket.h"
 #include "build.h"
 
-static void print_ether_addr(u_int8_t addr[])
-{
-    for (int i = 0; i < 6; i++)
-    {
-        printf("%02x%c", addr[i], i == 5 ? '\n' : ':');
-    }
-}
-
 int main(int argc, char *argv[])
 {
     pcap_arg arg;
     struct arp_header ahdr_s, ahdr_t;
     struct thread_arg_arp t_arg_arp = {
         &arg, &ahdr_s, argv[3], 0, thread_arp_poison
+    };
+    struct thread_arg_relay t_arg_relay = {
+        &arg, &ahdr_s, &ahdr_t, 0, thread_icmp_sniffing
     };
 
     if (argc < 4)
@@ -66,15 +61,19 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    print_ether_addr(ahdr_s.sha);
-    print_ether_addr(ahdr_t.sha);
-
     if (pthread_create(&t_arg_arp.tid, NULL, t_arg_arp.func, (void *)&t_arg_arp))
     {
         pr_err("Fail: pthread_create");
         exit(EXIT_FAILURE);
     }
     pr_out("pthread_create: tid = %lu", t_arg_arp.tid);
+
+    if (pthread_create(&t_arg_relay.tid, NULL, t_arg_relay.func, (void *)&t_arg_relay))
+    {
+        pr_err("Fail: pthread_create");
+        exit(EXIT_FAILURE);
+    }
+    pr_out("pthread_create: tid = %lu", t_arg_relay.tid);
 
     while (1)
         pause();

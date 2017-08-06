@@ -34,14 +34,23 @@ typedef struct _pcap_arg
     struct in_addr target_ip;
 } pcap_arg;
 
-typedef struct thread_arg_arp
+struct thread_arg_arp
 {
     pcap_arg *p_arg;
     void *arp_hdr;      // struct arp_header
     char *target;
     pthread_t tid;
     void *(* func)(void *);
-} t_arg_arp;
+};
+
+struct thread_arg_relay
+{
+    pcap_arg *p_arg;
+    void *arphdr_s;
+    void *arphdr_t;
+    pthread_t tid;
+    void *(* func)(void *);
+};
 
 #define print_msg(io, msgtype, arg...) \
     flockfile(io); \

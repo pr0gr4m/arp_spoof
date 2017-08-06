@@ -272,8 +272,7 @@ int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr, int flag)
         }
         else
         {       // frame is not arp
-            pr_err("recv: arp filter has problem");
-            return RET_ERR;
+            continue;
         }
     }
 
@@ -281,9 +280,68 @@ int recv_arp_packet(pcap_arg *arg, struct arp_header *ahdr, int flag)
     {
         pr_err("recv: couldn't find sender");
     }
-    else
+    else    // target
     {
         pr_err("recv: couldn't find target");
+    }
+
+    return RET_ERR;
+}
+
+/*
+ * Prototype : int recv_icmp_packet(pcap_arg *arg, u_char buf[], struct arp_header *ahdr)
+ * Last Modified 2017/08/07
+ * Written by pr0gr4m
+ *
+ * receive icmp packet sended from sender
+ * store to buf
+ */
+int recv_icmp_packet(pcap_arg *arg, u_char buf[], struct arp_header *ahdr, struct ip *iphdr)
+{
+    struct pcap_pkthdr *header;
+    const u_char *frame, *packet;
+    int ret_next;
+    int to_cnt = 0;
+
+    while (TRUE)
+    {
+        ret_next = pcap_next_ex(arg->handle, &header, &frame);
+
+        if (ret_next == 0)
+        {       // timeout
+            if (++to_cnt > 4096)
+            {
+                pr_err("pcap_next_ex: timeout");
+                break;
+            }
+            continue;
+        }
+
+        if (ret_next != 1)
+        {       // error
+            pr_err("pcap_next_ex: %s", pcap_geterr(arg->handle));
+            return RET_ERR;
+        }
+
+        if (frame == NULL)
+        {
+            pr_err("Don't grab the packet");
+            continue;
+        }
+
+        if (parse_ethernet(frame) == ETHERTYPE_IP)
+        {       // frame is ip
+            pr_out("recv packet:");
+            dumpcode(frame, header->len);
+            putchar('\n');
+            packet = frame + ETH_HEADER_LEN;
+            if (parse_ip(packet, iphdr) == IPPROTO_ICMP)
+            {   // protocol is ICMP
+                memcpy(buf, frame, ETH_HEADER_LEN + ntohs(iphdr->ip_len));
+                pr_out("************ SUCCESS!! ************");
+                return RET_SUC;
+            }
+        }
     }
 
     return RET_ERR;
@@ -312,5 +370,30 @@ void *thread_arp_poison(void *arg)
         sleep(10);
     }
 
+    return NULL;
+}
+
+/*
+ * Prototype : void *thread_arg_relay(void *arg)
+ * Last Modified 2017/08/07
+ * Written by pr0gr4m
+ *
+ * ICMP Sniffing Thread
+ */
+void *thread_icmp_sniffing(void *arg)
+{
+    struct thread_arg_relay *t_arg = (struct thread_arg_relay *)arg;
+    struct arp_header *ahdr_s = t_arg->arphdr_s;
+    struct arp_header *ahdr_t = t_arg->arphdr_t;
+    struct ip iphdr_s;
+    char buf[BUFSIZ];
+
+    while (TRUE)
+    {
+        if (recv_icmp_packet(t_arg->p_arg, buf, ahdr_s, &iphdr_s))
+        {
+            pr_err("Fail: recv icmp packet");
+        }
+    }
     return NULL;
 }
